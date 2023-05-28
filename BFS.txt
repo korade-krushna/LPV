@@ -1,0 +1,65 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <omp.h>
+
+using namespace std;
+
+const int max = 100000;
+
+vector<vector<int>> graph;
+
+void bfs(vector<vector<int>> &graph, int start, vector<bool> &visited) {
+    queue<int> q;
+    q.push(start);
+    visited[start] = true;
+
+    #pragma omp parallel
+    {
+        #pragma omp single
+        {
+            while (!q.empty()) {
+                int vertex = q.front();
+                q.pop();
+                cout<<vertex<<" ";
+                #pragma omp task firstprivate(vertex)
+                {
+                    for (int neighbor : graph[vertex]) {
+                        if (!visited[neighbor]) {
+                            q.push(neighbor);
+                            visited[neighbor] = true;
+                            #pragma omp task
+                            bfs(graph, neighbor, visited);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void parallel_bfs(vector<vector<int>> &graph, int start) {
+    vector<bool> visited(graph.size(), false);
+    bfs(graph, start, visited);
+}
+
+int main() {
+    int n, m, start_node;
+    cout << "Enter no. of Node, no. of Edges, and Starting Node of graph:\n";
+    cin >> n >> m >> start_node;
+
+    // Initialize graph vector
+    graph.resize(n + 1);
+
+    cout << "Enter pair of node and edges:\n";
+    for (int i = 0; i < m; i++) {
+        int u, v;
+        cin >> u >> v;
+        graph[u].push_back(v);
+        graph[v].push_back(u);
+    }
+
+    parallel_bfs(graph, start_node);
+
+    return 0;
+}
